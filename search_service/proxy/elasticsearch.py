@@ -15,6 +15,7 @@ from search_service.api.user import USER_INDEX
 from search_service.api.table import TABLE_INDEX
 from search_service.models.search_result import SearchResult
 from search_service.models.table import Table, SearchTableResult
+from search_service.models.user import User, SearchUserResult
 from search_service.models.user import User
 from search_service.models.dashboard import Dashboard, SearchDashboardResult
 from search_service.models.tag import Tag
@@ -258,33 +259,6 @@ class ElasticsearchProxy(BaseProxy):
             return TABLE_INDEX_MAP
         return ''
 
-    def _search_wildcard_helper(self, field_value: str,
-                                page_index: int,
-                                client: Search,
-                                field_name: str) -> SearchResult:
-        """
-        Do a wildcard match search with the query term.
-
-        :param field_value:
-        :param page_index:
-        :param client:
-        :param field_name
-        :param query_name: name of query
-        :return:
-        """
-        if field_value and field_name:
-            d = {
-                "wildcard": {
-                    field_name: field_value
-                }
-            }
-            q = query.Q(d)
-            client = client.query(q)
-
-        return self._get_search_result(page_index=page_index,
-                                       client=client,
-                                       model=Table)
-
     @timer_with_counter
     def fetch_table_search_results(self, *,
                                    query_term: str,
@@ -496,12 +470,12 @@ class ElasticsearchProxy(BaseProxy):
     def fetch_user_search_results(self, *,
                                   query_term: str,
                                   page_index: int = 0,
-                                  index: str = '') -> SearchResult:
+                                  index: str = '') -> SearchUserResult:
         if not index:
             raise Exception('Index cant be empty for user search')
         if not query_term:
             # return empty result for blank query term
-            return SearchResult(total_results=0, results=[])
+            return SearchUserResult(total_results=0, results=[])
 
         s = Search(using=self.elasticsearch, index=index)
 
@@ -527,7 +501,8 @@ class ElasticsearchProxy(BaseProxy):
         return self._search_helper(page_index=page_index,
                                    client=s,
                                    query_name=query_name,
-                                   model=User)
+                                   model=User,
+                                   search_result_model=SearchUserResult)
 
     @timer_with_counter
     def create_document(self, *, data: List[Table], index: str) -> str:
